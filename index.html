@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Rock Log</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Newsreader:ital,wght@0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<style>
+  /* ============ TOKENS ============ */
+  :root{
+    --bg:#14130f;
+    --surface:#201e19;
+    --surface-2:#2a2721;
+    --text:#efe7d8;
+    --text-muted:#a69c87;
+    --border:rgba(239,231,216,0.12);
+
+    --rust:#b5542c;
+    --moss:#6b7a55;
+    --slate:#4c6572;
+    --amethyst:#8a7599;
+    --ochre:#c99a3d;
+
+    --font-display:'Fraunces', serif;
+    --font-body:'Newsreader', serif;
+    --font-mono:'IBM Plex Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; background:var(--bg); }
+  body{
+    font-family:var(--font-body);
+    color:var(--text);
+    overflow:hidden;
+  }
+
+  #map{ position:absolute; inset:0; background:var(--bg); }
+
+  /* Leaflet dark-theme touch-ups */
+  .leaflet-control-zoom a{
+    background:var(--surface) !important;
+    color:var(--text) !important;
+    border-color:var(--border) !important;
+  }
+  .leaflet-control-zoom a:hover{ background:var(--surface-2) !important; }
+  .leaflet-control-attribution{
+    background:rgba(20,19,15,0.75) !important;
+    color:var(--text-muted) !important;
+  }
+  .leaflet-control-attribution a{ color:var(--text-muted) !important; }
+
+  /* ============ HEADER / SPECIMEN TAG ============ */
+  .site-header{
+    position:absolute;
+    top:20px; left:20px;
+    z-index:500;
+    max-width:300px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    padding:18px 20px;
+    opacity:0;
+    animation:rise 0.7s ease forwards;
+  }
+  .site-header .eyebrow{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--rust);
+    display:block;
+    margin-bottom:8px;
+  }
+  .site-header h1{
+    font-family:var(--font-display);
+    font-optical-sizing:auto;
+    font-weight:600;
+    font-size:26px;
+    line-height:1.15;
+    margin:0 0 6px 0;
+  }
+  .site-header p{
+    font-size:13.5px;
+    color:var(--text-muted);
+    margin:0;
+    line-height:1.5;
+  }
+  .site-header .rule{
+    width:32px; height:2px; background:var(--rust);
+    margin:12px 0 12px 0; border:none;
+  }
+  .site-header .count{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-muted);
+    letter-spacing:0.03em;
+  }
+  .site-header .count b{ color:var(--text); font-weight:500; }
+
+  /* ============ STRATIGRAPHIC LEGEND (signature element) ============ */
+  .legend{
+    position:absolute;
+    left:20px; bottom:24px;
+    z-index:500;
+    display:flex;
+    align-items:flex-end;
+    gap:14px;
+    opacity:0;
+    animation:rise 0.7s ease 0.15s forwards;
+  }
+  .legend-core{
+    display:flex;
+    flex-direction:column-reverse;
+    width:14px;
+    border:1px solid var(--border);
+    overflow:hidden;
+    background:var(--surface);
+  }
+  .legend-layer{ width:100%; min-height:6px; }
+  .legend-keys{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-muted);
+  }
+  .legend-key{ display:flex; align-items:center; gap:8px; white-space:nowrap; }
+  .legend-swatch{ width:9px; height:9px; flex:none; transform:rotate(45deg); }
+  .legend-title{
+    font-family:var(--font-mono);
+    font-size:10px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin-bottom:6px;
+    display:block;
+  }
+
+  /* ============ MARKERS ============ */
+  .gem-marker{
+    width:14px; height:14px;
+    transform:rotate(45deg);
+    border:2px solid var(--bg);
+    box-shadow:0 0 0 1px rgba(239,231,216,0.35), 0 2px 6px rgba(0,0,0,0.5);
+    transition:transform 0.15s ease;
+  }
+  .leaflet-marker-icon:hover .gem-marker,
+  .gem-wrap:hover .gem-marker{ transform:rotate(45deg) scale(1.35); }
+
+  /* ============ DETAIL PANEL ============ */
+  #detail-panel{
+    position:absolute;
+    top:0; right:0;
+    height:100%;
+    width:380px;
+    max-width:92vw;
+    background:var(--surface);
+    border-left:1px solid var(--border);
+    z-index:600;
+    transform:translateX(100%);
+    transition:transform 0.35s cubic-bezier(.4,0,.2,1);
+    overflow-y:auto;
+  }
+  #detail-panel.open{ transform:translateX(0); }
+
+  #detail-panel .close-btn{
+    position:absolute;
+    top:14px; right:14px;
+    width:30px; height:30px;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:var(--font-mono);
+    font-size:14px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    z-index:2;
+  }
+  #detail-panel .close-btn:hover{ background:var(--rust); border-color:var(--rust); }
+
+  .panel-photo{
+    width:100%; height:240px;
+    object-fit:cover;
+    display:block;
+    background:var(--surface-2);
+    border-bottom:1px solid var(--border);
+  }
+  .panel-photo-fallback{
+    width:100%; height:240px;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--surface-2);
+    border-bottom:1px solid var(--border);
+    color:var(--text-muted);
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+  }
+
+  .panel-body{ padding:22px 24px 28px; }
+  .panel-eyebrow{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    margin-bottom:10px;
+    display:inline-block;
+  }
+  .panel-body h2{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:26px;
+    line-height:1.15;
+    margin:0 0 16px 0;
+  }
+  .panel-row{
+    display:flex;
+    gap:12px;
+    padding:11px 0;
+    border-top:1px solid var(--border);
+    font-size:14px;
+  }
+  .panel-row .k{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    width:84px;
+    flex:none;
+    padding-top:2px;
+  }
+  .panel-row .v{ color:var(--text); line-height:1.45; }
+  .panel-notes{
+    font-family:var(--font-body);
+    font-style:italic;
+    color:var(--text-muted);
+    font-size:14.5px;
+    line-height:1.6;
+    margin:16px 0 0 0;
+    padding-top:14px;
+    border-top:1px solid var(--border);
+  }
+  .ig-link{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    margin-top:20px;
+    padding:11px 18px;
+    background:transparent;
+    border:1px solid var(--rust);
+    color:var(--rust);
+    text-decoration:none;
+    font-family:var(--font-mono);
+    font-size:11.5px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    transition:background 0.15s ease, color 0.15s ease;
+  }
+  .ig-link:hover{ background:var(--rust); color:var(--bg); }
+
+  /* ============ LOADING / EMPTY STATES ============ */
+  #status-banner{
+    position:absolute;
+    bottom:24px; right:24px;
+    z-index:500;
+    background:var(--surface);
+    border:1px solid var(--border);
+    padding:10px 16px;
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-muted);
+    display:none;
+  }
+
+  @keyframes rise{
+    from{ opacity:0; transform:translateY(8px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .site-header, .legend{ animation:none; opacity:1; }
+    #detail-panel{ transition:none; }
+  }
+
+  /* ============ MOBILE ============ */
+  @media (max-width: 640px){
+    .site-header{ max-width:calc(100vw - 40px); padding:14px 16px; }
+    .site-header h1{ font-size:21px; }
+    .legend{ display:none; }
+    #detail-panel{
+      width:100%; max-width:100%;
+      top:auto; bottom:0; right:0;
+      height:72vh;
+      border-left:none;
+      border-top:1px solid var(--border);
+      transform:translateY(100%);
+    }
+    #detail-panel.open{ transform:translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div class="site-header">
+  <span class="eyebrow">Field Collection</span>
+  <h1 id="page-title">The Rock Log</h1>
+  <p id="page-subtitle">Specimens, and where they were found.</p>
+  <hr class="rule" />
+  <span class="count" id="specimen-count">Loading specimens&hellip;</span>
+</div>
+
+<div class="legend" id="legend" style="display:none;">
+  <div>
+    <span class="legend-title">Key</span>
+    <div class="legend-core" id="legend-core"></div>
+  </div>
+  <div class="legend-keys" id="legend-keys"></div>
+</div>
+
+<div id="detail-panel">
+  <button class="close-btn" id="close-panel" aria-label="Close">&times;</button>
+  <div id="panel-content"></div>
+</div>
+
+<div id="status-banner"></div>
+
+<script>
+/* =====================================================================
+   CONFIG — this is the only part you should need to touch.
+   Paste the published-CSV link from your Google Sheet here.
+   See the SETUP guide for exactly how to get this link.
+   ===================================================================== */
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTQXBO_QVZkrMqgf79bWXoMo0W69XBfZ-oHiRF4jOW6O95OEHfjSN5VLRbPK5zmHzq8Xn4vEeyV90cV/pub?gid=0&single=true&output=csv"
+
+const PAGE_TITLE = "The Rock Log";
+const PAGE_SUBTITLE = "Specimens, and where they were found.";
+
+/* Sample data shown until a real sheet is connected above. */
+const SAMPLE_DATA = [
+  { name:"Banded Amethyst Geode", category:"Purchased", locality:"Artigas, Uruguay", lat:-30.4, lng:-56.5,
+    source:"Mineral show, Tucson AZ", photo:"https://images.unsplash.com/photo-1518544801976-3e159e50e5bb?w=800&q=80",
+    instagram:"https://instagram.com", notes:"First piece of the collection — bought on a whim, never regretted it." },
+  { name:"Rose Quartz", category:"Found", locality:"Custer, South Dakota, USA", lat:43.75, lng:-103.6,
+    source:"Field trip, undergrad", photo:"https://images.unsplash.com/photo-1610375461369-d613b564f4e8?w=800&q=80",
+    instagram:"https://instagram.com", notes:"" },
+  { name:"Malachite Nodule", category:"Gifted", locality:"Katanga, DR Congo", lat:-10.7, lng:25.5,
+    source:"Gift from a colleague", photo:"https://images.unsplash.com/photo-1610375229029-539f2b3c8e2b?w=800&q=80",
+    instagram:"https://instagram.com", notes:"" },
+  { name:"Pyrite Cube Cluster", category:"Purchased", locality:"Navajún, Spain", lat:42.2, lng:-2.15,
+    source:"Online specimen dealer", photo:"https://images.unsplash.com/photo-1607301405390-d831c242f59b?w=800&q=80",
+    instagram:"https://instagram.com", notes:"" },
+  { name:"Obsidian Flake", category:"Found", locality:"Newberry Volcano, Oregon, USA", lat:43.7, lng:-121.3,
+    source:"", photo:"", instagram:"https://instagram.com", notes:"" },
+  { name:"Labradorite Slab", category:"Traded", locality:"Nain, Labrador, Canada", lat:56.5, lng:-61.7,
+    source:"Traded at a gem show", photo:"https://images.unsplash.com/photo-1600267175161-cfaa711b4a81?w=800&q=80",
+    instagram:"https://instagram.com", notes:"" }
+];
+
+/* =====================================================================
+   Category colour cycle — assigned automatically to whatever values
+   appear in the Category column, in first-seen order.
+   ===================================================================== */
+const PALETTE = ["#b5542c", "#6b7a55", "#4c6572", "#8a7599", "#c99a3d"];
+const categoryColor = {};
+function colorFor(cat){
+  if(!cat) cat = "Uncategorised";
+  if(!categoryColor[cat]){
+    const used = Object.keys(categoryColor).length;
+    categoryColor[cat] = PALETTE[used % PALETTE.length];
+  }
+  return categoryColor[cat];
+}
+
+/* ============ MAP INIT ============ */
+document.getElementById("page-title").textContent = PAGE_TITLE;
+document.getElementById("page-subtitle").textContent = PAGE_SUBTITLE;
+document.title = PAGE_TITLE;
+
+const map = L.map("map", { zoomControl:false, worldCopyJump:true }).setView([20, 10], 2.3);
+L.control.zoom({ position:"bottomright" }).addTo(map);
+
+L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+  attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+  maxZoom: 19
+}).addTo(map);
+
+const markersLayer = L.layerGroup().addTo(map);
+const statusBanner = document.getElementById("status-banner");
+
+function showStatus(msg){
+  statusBanner.textContent = msg;
+  statusBanner.style.display = "block";
+}
+function hideStatus(){ statusBanner.style.display = "none"; }
+
+/* ============ GEOCODING (Nominatim, free, no key) ============
+   Used when a row has a Locality but no Lat/Lng — so your friend
+   can just type a place name and never touch coordinates. */
+async function geocode(place){
+  try{
+    const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(place);
+    const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+    const data = await res.json();
+    if(data && data[0]){
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  }catch(e){ /* silently skip a pin we can't place */ }
+  return null;
+}
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+/* ============ MARKER + PANEL ============ */
+function makeIcon(color){
+  return L.divIcon({
+    className: "gem-wrap",
+    html: `<div class="gem-marker" style="background:${color}"></div>`,
+    iconSize: [14,14],
+    iconAnchor: [7,7]
+  });
+}
+
+function openPanel(rock){
+  const panel = document.getElementById("detail-panel");
+  const content = document.getElementById("panel-content");
+  const color = colorFor(rock.category);
+
+  const photoHtml = rock.photo
+    ? `<img class="panel-photo" src="${rock.photo}" alt="${escapeHtml(rock.name)}" />`
+    : `<div class="panel-photo-fallback">No photo yet</div>`;
+
+  const igHtml = rock.instagram
+    ? `<a class="ig-link" href="${rock.instagram}" target="_blank" rel="noopener">View original post &rarr;</a>`
+    : "";
+
+  const notesHtml = rock.notes
+    ? `<p class="panel-notes">${escapeHtml(rock.notes)}</p>`
+    : "";
+
+  content.innerHTML = `
+    ${photoHtml}
+    <div class="panel-body">
+      <span class="panel-eyebrow" style="color:${color}">${escapeHtml(rock.category || "Specimen")}</span>
+      <h2>${escapeHtml(rock.name)}</h2>
+      <div class="panel-row"><div class="k">Found in</div><div class="v">${escapeHtml(rock.locality || "Unknown")}</div></div>
+      ${rock.source ? `<div class="panel-row"><div class="k">Sourced</div><div class="v">${escapeHtml(rock.source)}</div></div>` : ""}
+      ${notesHtml}
+      ${igHtml}
+    </div>
+  `;
+  panel.classList.add("open");
+}
+document.getElementById("close-panel").addEventListener("click", () => {
+  document.getElementById("detail-panel").classList.remove("open");
+});
+
+function escapeHtml(str){
+  const d = document.createElement("div");
+  d.textContent = str == null ? "" : String(str);
+  return d.innerHTML;
+}
+
+/* ============ LEGEND (stratigraphic column, built from real counts) ============ */
+function buildLegend(rocks){
+  const counts = {};
+  rocks.forEach(r => {
+    const cat = r.category || "Uncategorised";
+    counts[cat] = (counts[cat] || 0) + 1;
+  });
+  const cats = Object.keys(counts);
+  if(cats.length === 0) return;
+
+  const core = document.getElementById("legend-core");
+  const keys = document.getElementById("legend-keys");
+  core.innerHTML = ""; keys.innerHTML = "";
+
+  cats.forEach(cat => {
+    const color = colorFor(cat);
+    const layer = document.createElement("div");
+    layer.className = "legend-layer";
+    layer.style.background = color;
+    layer.style.flexGrow = counts[cat];
+    core.appendChild(layer);
+
+    const key = document.createElement("div");
+    key.className = "legend-key";
+    key.innerHTML = `<span class="legend-swatch" style="background:${color}"></span>${escapeHtml(cat)} (${counts[cat]})`;
+    keys.appendChild(key);
+  });
+  document.getElementById("legend").style.display = "flex";
+}
+
+/* ============ DATA LOADING ============ */
+function normaliseRow(row){
+  return {
+    name: row.Name || row.name || "Unnamed specimen",
+    category: (row.Category || row.category || "").trim(),
+    locality: row.Locality || row.locality || row["Location Found"] || "",
+    lat: parseFloat(row.Lat || row.lat || row.Latitude),
+    lng: parseFloat(row.Lng || row.lng || row.Longitude),
+    source: row.Source || row.source || row["Sourced From"] || "",
+    photo: row.Photo || row.photo || row["Photo URL"] || "",
+    instagram: row.Instagram || row.instagram || row["Instagram URL"] || "",
+    notes: row.Notes || row.notes || ""
+  };
+}
+
+async function loadData(){
+  let rows;
+  if(SHEET_CSV_URL && SHEET_CSV_URL.trim() !== ""){
+    try{
+      const res = await fetch(SHEET_CSV_URL);
+      const csvText = await res.text();
+      const parsed = Papa.parse(csvText, { header:true, skipEmptyLines:true });
+      rows = parsed.data.map(normaliseRow).filter(r => r.name);
+    }catch(e){
+      showStatus("Could not load the sheet — showing sample data instead.");
+      rows = SAMPLE_DATA.map(normaliseRow);
+    }
+  } else {
+    rows = SAMPLE_DATA.map(normaliseRow);
+  }
+  await renderRocks(rows);
+}
+
+async function renderRocks(rocks){
+  markersLayer.clearLayers();
+  const bounds = [];
+  const needsGeocode = rocks.filter(r => (isNaN(r.lat) || isNaN(r.lng)) && r.locality);
+
+  if(needsGeocode.length){
+    showStatus(`Placing ${needsGeocode.length} specimen${needsGeocode.length>1?"s":""} on the map…`);
+  }
+
+  for(const rock of rocks){
+    if(isNaN(rock.lat) || isNaN(rock.lng)){
+      if(rock.locality){
+        const geo = await geocode(rock.locality);
+        if(geo){ rock.lat = geo.lat; rock.lng = geo.lng; }
+        await sleep(1100); // respect Nominatim's 1 req/sec usage policy
+      }
+    }
+    if(isNaN(rock.lat) || isNaN(rock.lng)) continue;
+
+    const marker = L.marker([rock.lat, rock.lng], { icon: makeIcon(colorFor(rock.category)) });
+    marker.on("click", () => openPanel(rock));
+    marker.addTo(markersLayer);
+    bounds.push([rock.lat, rock.lng]);
+  }
+
+  hideStatus();
+  buildLegend(rocks.filter(r => !isNaN(r.lat) && !isNaN(r.lng)));
+
+  const placed = rocks.filter(r => !isNaN(r.lat) && !isNaN(r.lng)).length;
+  document.getElementById("specimen-count").innerHTML =
+    `<b>${placed}</b> specimen${placed===1?"":"s"} mapped`;
+
+  if(bounds.length){
+    map.fitBounds(bounds, { padding:[60,60], maxZoom:6 });
+  }
+}
+
+loadData();
+</script>
+
+</body>
+</html>
