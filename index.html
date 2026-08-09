@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Lauren's Rock Collection</title>
+<title>The Rock Log</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -331,7 +331,7 @@
 
 <div class="site-header">
   <span class="eyebrow">Field Collection</span>
-  <h1 id="page-title">Lauren's Rock Collection</h1>
+  <h1 id="page-title">The Rock Log</h1>
   <p id="page-subtitle">Specimens, and where they were found.</p>
   <hr class="rule" />
   <span class="count" id="specimen-count">Loading specimens&hellip;</span>
@@ -359,11 +359,30 @@
    Paste the published-CSV link from your Google Sheet here.
    See the SETUP guide for exactly how to get this link.
    ===================================================================== */
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTQXBO_QVZkrMqgf79bWXoMo0W69XBfZ-oHiRF4jOW6O95OEHfjSN5VLRbPK5zmHzq8Xn4vEeyV90cV/pub?gid=0&single=true&output=csv"; // e.g. "https://docs.google.com/spreadsheets/d/e/XXXX/pub?output=csv"
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTQXBO_QVZkrMqgf79bWXoMo0W69XBfZ-oHiRF4jOW6O95OEHfjSN5VLRbPK5zmHzq8Xn4vEeyV90cV/pub?gid=0&single=true&output=csv";
 
 const PAGE_TITLE = "Lauren's Rock Collection";
 const PAGE_SUBTITLE = "Specimens, and where they were found.";
 
+/* Sample data shown until a real sheet is connected above. */
+const SAMPLE_DATA = [
+  { name:"Banded Amethyst Geode", category:"Purchased", locality:"Artigas, Uruguay", lat:-30.4, lng:-56.5,
+    source:"Mineral show, Tucson AZ", photo:"https://images.unsplash.com/photo-1518544801976-3e159e50e5bb?w=800&q=80",
+    instagram:"https://instagram.com", notes:"First piece of the collection — bought on a whim, never regretted it." },
+  { name:"Rose Quartz", category:"Found", locality:"Custer, South Dakota, USA", lat:43.75, lng:-103.6,
+    source:"Field trip, undergrad", photo:"https://images.unsplash.com/photo-1610375461369-d613b564f4e8?w=800&q=80",
+    instagram:"https://instagram.com", notes:"" },
+  { name:"Malachite Nodule", category:"Gifted", locality:"Katanga, DR Congo", lat:-10.7, lng:25.5,
+    source:"Gift from a colleague", photo:"https://images.unsplash.com/photo-1610375229029-539f2b3c8e2b?w=800&q=80",
+    instagram:"https://instagram.com", notes:"" },
+  { name:"Pyrite Cube Cluster", category:"Purchased", locality:"Navajún, Spain", lat:42.2, lng:-2.15,
+    source:"Online specimen dealer", photo:"https://images.unsplash.com/photo-1607301405390-d831c242f59b?w=800&q=80",
+    instagram:"https://instagram.com", notes:"" },
+  { name:"Obsidian Flake", category:"Found", locality:"Newberry Volcano, Oregon, USA", lat:43.7, lng:-121.3,
+    source:"", photo:"", instagram:"https://instagram.com", notes:"" },
+  { name:"Labradorite Slab", category:"Traded", locality:"Nain, Labrador, Canada", lat:56.5, lng:-61.7,
+    source:"Traded at a gem show", photo:"https://images.unsplash.com/photo-1600267175161-cfaa711b4a81?w=800&q=80",
+    instagram:"https://instagram.com", notes:"" }
 ];
 
 /* =====================================================================
