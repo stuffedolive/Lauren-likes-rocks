@@ -560,9 +560,7 @@ async function renderRocks(rocks){
   hideStatus();
   buildLegend(rocks.filter(r => !isNaN(r.lat) && !isNaN(r.lng)));
 
-  const placed = rocks.filter(r => !isNaN(r.lat) && !isNaN(r.lng)).length;
-  document.getElementById("specimen-count").innerHTML =
-    `<b>${placed}</b> specimen${placed===1?"":"s"} mapped`;
+const placed = rocks.filter(r => !isNaN(r.lat) && !isNaN(r.lng)).length; const unmapped = rocks.length - placed; let countHtml = `<b>${placed}</b> specimen${placed===1?"":"s"} mapped`; if(unmapped > 0){ countHtml += `<br><span style="color:var(--rust)">${unmapped} unmapped</span>`; } document.getElementById("specimen-count").innerHTML = countHtml;
 
   if(bounds.length){
     map.fitBounds(bounds, { padding:[60,60], maxZoom:6 });
