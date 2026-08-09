@@ -285,6 +285,30 @@
   }
   .ig-link:hover{ background:var(--rust); color:var(--bg); }
 
+  .unmapped-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    width:100%;
+    padding:12px 4px;
+    border:none;
+    border-top:1px solid var(--border);
+    background:transparent;
+    cursor:pointer;
+    text-align:left;
+    font-family:var(--font-body);
+    color:var(--text);
+  }
+  .unmapped-row:hover{ background:var(--surface-2); }
+  .unmapped-row .dot{
+    width:9px; height:9px; flex:none;
+    transform:rotate(45deg);
+  }
+  .unmapped-row .label{ flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .unmapped-row .name{ font-size:14.5px; }
+  .unmapped-row .sub{ font-size:12px; color:var(--text-muted); font-family:var(--font-mono); }
+  .unmapped-row .arrow{ color:var(--text-muted); flex:none; }
+
   /* ============ LOADING / EMPTY STATES ============ */
   #status-banner{
     position:absolute;
@@ -457,7 +481,7 @@ function openPanel(rock){
       <span class="panel-eyebrow" style="color:${color}">${escapeHtml(rock.category || "Specimen")}</span>
       <h2>${escapeHtml(rock.name)}</h2>
       <div class="panel-row"><div class="k">Found in</div><div class="v">${escapeHtml(rock.locality || "Unknown")}</div></div>
-      <div class="panel-row"><div class="k">Coordinates</div><div class="v" style="font-family:var(--font-mono); font-size:12.5px;">${rock.lat.toFixed(4)}, ${rock.lng.toFixed(4)}</div></div>
+      ${(!isNaN(rock.lat) && !isNaN(rock.lng)) ? `<div class="panel-row"><div class="k">Coordinates</div><div class="v" style="font-family:var(--font-mono); font-size:12.5px;">${rock.lat.toFixed(4)}, ${rock.lng.toFixed(4)}</div></div>` : ""}
       ${rock.source ? `<div class="panel-row"><div class="k">Sourced</div><div class="v">${escapeHtml(rock.source)}</div></div>` : ""}
       ${notesHtml}
       ${igHtml}
@@ -480,30 +504,33 @@ function openUnmappedPanel(){
   const panel = document.getElementById("detail-panel");
   const content = document.getElementById("panel-content");
 
-  const rows = currentUnmapped.map(r => `
-    <div class="panel-row" style="align-items:flex-start;">
-      <div class="k" style="width:auto; padding-top:0;">&#9670;</div>
-      <div class="v">
-        <div style="color:var(--text); margin-bottom:2px;">${escapeHtml(r.name)}</div>
-        <div style="color:var(--text-muted); font-size:12.5px;">
-          Locality entered: ${r.locality ? escapeHtml(r.locality) : "<em>none given</em>"}
-        </div>
-      </div>
-    </div>
+  const rows = currentUnmapped.map((r, i) => `
+    <button class="unmapped-row" data-idx="${i}">
+      <span class="dot" style="background:${colorFor(r.category)}"></span>
+      <span class="label">
+        <span class="name">${escapeHtml(r.name)}</span>
+        <span class="sub">${r.locality ? escapeHtml(r.locality) : "Location unknown"}</span>
+      </span>
+      <span class="arrow">&rarr;</span>
+    </button>
   `).join("");
 
   content.innerHTML = `
     <div class="panel-body" style="padding-top:24px;">
-      <span class="panel-eyebrow" style="color:var(--rust)">Unmapped</span>
-      <h2 style="font-size:22px;">Couldn't be placed</h2>
+      <span class="panel-eyebrow" style="color:var(--text-muted)">No pinned location</span>
+      <h2 style="font-size:22px;">Unplaced specimens</h2>
       <p style="color:var(--text-muted); font-size:13.5px; line-height:1.5; margin:0 0 4px 0;">
-        These specimens are missing Lat / Lng coordinates in the sheet, so
-        there's nowhere to place a pin yet. Locality text alone isn't enough &mdash;
-        add coordinates to plot them.
+        Some finds don't have a known spot on the map &mdash; that's fine, it happens.
+        Tap one to see its full record.
       </p>
       ${rows}
     </div>
   `;
+
+  content.querySelectorAll(".unmapped-row").forEach(btn => {
+    btn.addEventListener("click", () => openPanel(currentUnmapped[parseInt(btn.dataset.idx, 10)]));
+  });
+
   panel.classList.add("open");
 }
 
@@ -598,7 +625,7 @@ async function renderRocks(rocks){
   document.getElementById("random-rock-btn").disabled = currentMapped.length === 0;
   let countHtml = `<b>${placed}</b> specimen${placed===1?"":"s"} mapped`;
   if(currentUnmapped.length > 0){
-    countHtml += `<br><span id="unmapped-count" style="color:var(--rust); cursor:pointer; text-decoration:underline; text-underline-offset:2px;">${currentUnmapped.length} unmapped &rarr;</span>`;
+    countHtml += `<br><span id="unmapped-count" style="color:var(--text-muted); cursor:pointer; text-decoration:underline; text-underline-offset:2px;">${currentUnmapped.length} without a location &rarr;</span>`;
   } else {
     countHtml += `<br><span id="unmapped-count" style="display:none;"></span>`;
   }
@@ -617,4 +644,3 @@ loadData();
 
 </body>
 </html>
-
