@@ -12,6 +12,8 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
 
 <style>
   /* ============ TOKENS ============ */
@@ -191,6 +193,21 @@
   }
   .leaflet-marker-icon:hover .gem-marker,
   .gem-wrap:hover .gem-marker{ transform:rotate(45deg) scale(1.35); }
+
+  .cluster-badge{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--surface-2);
+    border:2px solid var(--rust);
+    border-radius:50%;
+    color:var(--text);
+    font-family:var(--font-mono);
+    font-weight:500;
+    box-shadow:0 0 0 1px rgba(239,231,216,0.25), 0 2px 8px rgba(0,0,0,0.5);
+    transition:transform 0.15s ease;
+  }
+  .cluster-wrap:hover .cluster-badge{ transform:scale(1.08); }
 
   /* ============ DETAIL PANEL ============ */
   #detail-panel{
@@ -485,7 +502,22 @@ basemapBtn.onAdd = function(){
 };
 basemapBtn.addTo(map);
 
-const markersLayer = L.layerGroup().addTo(map);
+const markersLayer = L.markerClusterGroup({
+  maxClusterRadius: 50,
+  spiderfyOnMaxZoom: true,
+  showCoverageOnHover: false,
+  iconCreateFunction: function(cluster){
+    const count = cluster.getChildCount();
+    let size = 34;
+    if(count >= 10) size = 42;
+    if(count >= 50) size = 50;
+    return L.divIcon({
+      html: `<div class="cluster-badge" style="width:${size}px; height:${size}px; font-size:${size > 42 ? 14 : 12}px;">${count}</div>`,
+      className: "cluster-wrap",
+      iconSize: L.point(size, size)
+    });
+  }
+}).addTo(map);
 const statusBanner = document.getElementById("status-banner");
 let currentUnmapped = [];
 let currentMapped = [];
@@ -692,4 +724,5 @@ loadData();
 
 </body>
 </html>
+
 
