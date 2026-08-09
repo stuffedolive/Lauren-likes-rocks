@@ -127,7 +127,7 @@
     font-family:var(--font-display);
     font-optical-sizing:auto;
     font-weight:700;
-    font-size:46px;
+    font-size:38px;
     line-height:1;
     color:var(--text);
   }
@@ -260,6 +260,26 @@
   .gem-marker.favorite{
     box-shadow:0 0 0 2px var(--ochre), 0 0 10px rgba(201,154,61,0.65), 0 2px 6px rgba(0,0,0,0.5);
   }
+  .gem-wrap.active .gem-marker{
+    box-shadow:0 0 0 3px var(--rust), 0 0 16px rgba(181,84,44,0.85), 0 2px 6px rgba(0,0,0,0.5);
+    transform:rotate(45deg) scale(1.5);
+  }
+
+  /* Name labels — only shown once zoomed in enough to avoid clutter */
+  .leaflet-tooltip.rock-label{
+    background:transparent;
+    border:none;
+    box-shadow:none;
+    color:var(--text);
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.02em;
+    padding:0 0 0 6px;
+    text-shadow:0 1px 4px rgba(0,0,0,0.95), 0 0 8px rgba(0,0,0,0.7);
+  }
+  .leaflet-tooltip.rock-label::before{ display:none; }
+  #map:not(.show-labels) .leaflet-tooltip-pane{ opacity:0; pointer-events:none; }
+  #map.show-labels .leaflet-tooltip-pane{ opacity:1; transition:opacity 0.2s ease; }
 
   .cluster-badge{
     display:flex;
@@ -439,7 +459,7 @@
   @media (max-width: 640px){
     .site-header{ max-width:calc(100vw - 40px); padding:14px 16px; }
     .site-header h1{ font-size:21px; }
-    .total-number{ font-size:34px; }
+    .total-number{ font-size:29px; }
     .legend{ display:none; }
     #detail-panel{
       width:100%; max-width:100%;
@@ -467,6 +487,7 @@
   <hr class="rule" />
   <span class="count" id="specimen-count">Loading specimens&hellip;</span>
   <button id="random-rock-btn" class="random-btn" disabled>Take me to a rock &rarr;</button>
+  <button id="browse-all-btn" class="random-btn" disabled>Browse all specimens &rarr;</button>
   <button id="favorites-btn" class="unknown-btn" style="display:none; border-color:var(--ochre); color:var(--ochre);">&#9733; My favourites</button>
   <button id="unknown-rock-btn" class="unknown-btn" style="display:none;">Unknown rocks &mdash; help me identify them</button>
 </div>
@@ -575,6 +596,12 @@ basemapBtn.onAdd = function(){
 };
 basemapBtn.addTo(map);
 
+const LABEL_ZOOM_THRESHOLD = 7;
+function updateLabelVisibility(){
+  map.getContainer().classList.toggle("show-labels", map.getZoom() >= LABEL_ZOOM_THRESHOLD);
+}
+map.on("zoomend", updateLabelVisibility);
+
 const markersLayer = L.markerClusterGroup({
   maxClusterRadius: 50,
   spiderfyOnMaxZoom: true,
@@ -596,6 +623,7 @@ let currentUnmapped = [];
 let currentMapped = [];
 let currentUnknown = [];
 let currentFavorites = [];
+let currentAll = [];
 
 function showStatus(msg){
   statusBanner.textContent = msg;
@@ -613,10 +641,26 @@ function makeIcon(color, isFavorite){
   });
 }
 
+let activeMarkerEl = null;
+function setActiveMarker(marker){
+  clearActiveMarker();
+  if(marker && marker.getElement && marker.getElement()){
+    activeMarkerEl = marker.getElement();
+    activeMarkerEl.classList.add("active");
+  }
+}
+function clearActiveMarker(){
+  if(activeMarkerEl){
+    activeMarkerEl.classList.remove("active");
+    activeMarkerEl = null;
+  }
+}
+
 function openPanel(rock){
   const panel = document.getElementById("detail-panel");
   const content = document.getElementById("panel-content");
   const color = colorFor(rock.category);
+  setActiveMarker(rock._marker);
 
   const photoHtml = rock.photo
     ? `<img class="panel-photo" src="${rock.photo}" alt="${escapeHtml(rock.name)}" />`
@@ -646,6 +690,7 @@ function openPanel(rock){
 }
 document.getElementById("close-panel").addEventListener("click", () => {
   document.getElementById("detail-panel").classList.remove("open");
+  clearActiveMarker();
 });
 
 function goToRock(rock){
@@ -664,8 +709,44 @@ document.getElementById("random-rock-btn").addEventListener("click", () => {
 });
 
 document.getElementById("favorites-btn").addEventListener("click", openFavoritesPanel);
+document.getElementById("browse-all-btn").addEventListener("click", openAllPanel);
+
+function openAllPanel(){
+  clearActiveMarker();
+  const panel = document.getElementById("detail-panel");
+  const content = document.getElementById("panel-content");
+
+  const rows = currentAll.map((r, i) => `
+    <button class="unmapped-row" data-idx="${i}">
+      <span class="dot" style="background:${colorFor(r.category)}"></span>
+      <span class="label">
+        <span class="name">${escapeHtml(r.name)}${r.favorite ? " &#9733;" : ""}</span>
+        <span class="sub">${r.locality ? escapeHtml(r.locality) : "Location unknown"}</span>
+      </span>
+      <span class="arrow">&rarr;</span>
+    </button>
+  `).join("");
+
+  content.innerHTML = `
+    <div class="panel-body" style="padding-top:24px;">
+      <span class="panel-eyebrow" style="color:var(--text-muted)">Collection</span>
+      <h2 style="font-size:22px;">All specimens</h2>
+      <p style="color:var(--text-muted); font-size:13.5px; line-height:1.5; margin:0 0 4px 0;">
+        ${currentAll.length} specimen${currentAll.length===1?"":"s"}, A&ndash;Z.
+      </p>
+      ${rows}
+    </div>
+  `;
+
+  content.querySelectorAll(".unmapped-row").forEach(btn => {
+    btn.addEventListener("click", () => goToRock(currentAll[parseInt(btn.dataset.idx, 10)]));
+  });
+
+  panel.classList.add("open");
+}
 
 function openFavoritesPanel(){
+  clearActiveMarker();
   const panel = document.getElementById("detail-panel");
   const content = document.getElementById("panel-content");
 
@@ -701,6 +782,7 @@ function openFavoritesPanel(){
 document.getElementById("unknown-rock-btn").addEventListener("click", openUnknownPanel);
 
 function openUnknownPanel(){
+  clearActiveMarker();
   const panel = document.getElementById("detail-panel");
   const content = document.getElementById("panel-content");
 
@@ -738,6 +820,7 @@ function openUnknownPanel(){
 }
 
 function openUnmappedPanel(){
+  clearActiveMarker();
   const panel = document.getElementById("detail-panel");
   const content = document.getElementById("panel-content");
 
@@ -855,8 +938,10 @@ async function renderRocks(rocks){
     if(isNaN(rock.lat) || isNaN(rock.lng)) continue;
 
     const marker = L.marker([rock.lat, rock.lng], { icon: makeIcon(colorFor(rock.category), rock.favorite) });
+    marker.bindTooltip(rock.name, { permanent:true, direction:"right", className:"rock-label", offset:[6,0] });
     marker.on("click", () => openPanel(rock));
     marker.addTo(markersLayer);
+    rock._marker = marker;
     bounds.push([rock.lat, rock.lng]);
   }
 
@@ -864,6 +949,8 @@ async function renderRocks(rocks){
   buildLegend(rocks.filter(r => !isNaN(r.lat) && !isNaN(r.lng)));
 
   document.getElementById("total-number").textContent = rocks.length;
+  currentAll = rocks.slice().sort((a, b) => a.name.localeCompare(b.name));
+  document.getElementById("browse-all-btn").disabled = currentAll.length === 0;
   currentUnmapped = rocks.filter(r => isNaN(r.lat) || isNaN(r.lng));
   currentMapped = rocks.filter(r => !isNaN(r.lat) && !isNaN(r.lng));
   currentUnknown = rocks.filter(r => r.name && r.name.trim().toLowerCase() === "unknown");
@@ -886,6 +973,7 @@ async function renderRocks(rocks){
   if(bounds.length){
     map.fitBounds(bounds, { padding:[60,60], maxZoom:6 });
   }
+  updateLabelVisibility();
 }
 
 loadData();
@@ -893,6 +981,7 @@ loadData();
 
 </body>
 </html>
+
 
 
 
