@@ -424,22 +424,6 @@ function showStatus(msg){
 }
 function hideStatus(){ statusBanner.style.display = "none"; }
 
-/* ============ GEOCODING (Nominatim, free, no key) ============
-   Used when a row has a Locality but no Lat/Lng — so your friend
-   can just type a place name and never touch coordinates. */
-async function geocode(place){
-  try{
-    const url = "https://nominatim.openstreetmap.org/search?format=json&limit=1&q=" + encodeURIComponent(place);
-    const res = await fetch(url, { headers: { "Accept-Language": "en" } });
-    const data = await res.json();
-    if(data && data[0]){
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
-    }
-  }catch(e){ /* silently skip a pin we can't place */ }
-  return null;
-}
-function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-
 /* ============ MARKER + PANEL ============ */
 function makeIcon(color){
   return L.divIcon({
@@ -473,6 +457,7 @@ function openPanel(rock){
       <span class="panel-eyebrow" style="color:${color}">${escapeHtml(rock.category || "Specimen")}</span>
       <h2>${escapeHtml(rock.name)}</h2>
       <div class="panel-row"><div class="k">Found in</div><div class="v">${escapeHtml(rock.locality || "Unknown")}</div></div>
+      <div class="panel-row"><div class="k">Coordinates</div><div class="v" style="font-family:var(--font-mono); font-size:12.5px;">${rock.lat.toFixed(4)}, ${rock.lng.toFixed(4)}</div></div>
       ${rock.source ? `<div class="panel-row"><div class="k">Sourced</div><div class="v">${escapeHtml(rock.source)}</div></div>` : ""}
       ${notesHtml}
       ${igHtml}
@@ -512,8 +497,9 @@ function openUnmappedPanel(){
       <span class="panel-eyebrow" style="color:var(--rust)">Unmapped</span>
       <h2 style="font-size:22px;">Couldn't be placed</h2>
       <p style="color:var(--text-muted); font-size:13.5px; line-height:1.5; margin:0 0 4px 0;">
-        These specimens don't have a pin yet. Usually it's a missing or misspelled
-        Locality in the sheet &mdash; try adding a country or a more exact place name.
+        These specimens are missing Lat / Lng coordinates in the sheet, so
+        there's nowhere to place a pin yet. Locality text alone isn't enough &mdash;
+        add coordinates to plot them.
       </p>
       ${rows}
     </div>
@@ -593,20 +579,8 @@ async function loadData(){
 async function renderRocks(rocks){
   markersLayer.clearLayers();
   const bounds = [];
-  const needsGeocode = rocks.filter(r => (isNaN(r.lat) || isNaN(r.lng)) && r.locality);
-
-  if(needsGeocode.length){
-    showStatus(`Placing ${needsGeocode.length} specimen${needsGeocode.length>1?"s":""} on the map…`);
-  }
 
   for(const rock of rocks){
-    if(isNaN(rock.lat) || isNaN(rock.lng)){
-      if(rock.locality){
-        const geo = await geocode(rock.locality);
-        if(geo){ rock.lat = geo.lat; rock.lng = geo.lng; }
-        await sleep(1100); // respect Nominatim's 1 req/sec usage policy
-      }
-    }
     if(isNaN(rock.lat) || isNaN(rock.lng)) continue;
 
     const marker = L.marker([rock.lat, rock.lng], { icon: makeIcon(colorFor(rock.category)) });
@@ -643,3 +617,4 @@ loadData();
 
 </body>
 </html>
+
