@@ -57,6 +57,25 @@
   }
   .leaflet-control-attribution a{ color:var(--text-muted) !important; }
 
+  /* Darken and warm real satellite imagery to match the palette */
+  .sat-tiles{
+    filter: brightness(0.55) contrast(1.15) saturate(0.7) sepia(0.12) hue-rotate(-8deg);
+  }
+
+  .basemap-toggle{
+    background:var(--surface);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    padding:8px 12px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .basemap-toggle:hover{ border-color:var(--rust); color:var(--rust); }
+
   /* ============ HEADER / SPECIMEN TAG ============ */
   .site-header{
     position:absolute;
@@ -432,10 +451,39 @@ document.title = PAGE_TITLE;
 const map = L.map("map", { zoomControl:false, worldCopyJump:true }).setView([20, 10], 2.3);
 L.control.zoom({ position:"bottomright" }).addTo(map);
 
-L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+const darkLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
   attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
   maxZoom: 19
 }).addTo(map);
+
+const satLayer = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+  attribution: '&copy; Esri, Maxar, Earthstar Geographics',
+  maxZoom: 19,
+  className: "sat-tiles"
+});
+
+let onSatellite = false;
+const basemapBtn = L.control({ position: "bottomright" });
+basemapBtn.onAdd = function(){
+  const div = L.DomUtil.create("div", "basemap-toggle");
+  div.innerHTML = "Satellite";
+  div.title = "Switch basemap";
+  L.DomEvent.disableClickPropagation(div);
+  div.addEventListener("click", () => {
+    onSatellite = !onSatellite;
+    if(onSatellite){
+      map.removeLayer(darkLayer);
+      satLayer.addTo(map);
+      div.innerHTML = "Map";
+    } else {
+      map.removeLayer(satLayer);
+      darkLayer.addTo(map);
+      div.innerHTML = "Satellite";
+    }
+  });
+  return div;
+};
+basemapBtn.addTo(map);
 
 const markersLayer = L.layerGroup().addTo(map);
 const statusBanner = document.getElementById("status-banner");
@@ -644,3 +692,4 @@ loadData();
 
 </body>
 </html>
+
