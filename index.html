@@ -117,6 +117,27 @@
     width:32px; height:2px; background:var(--rust);
     margin:12px 0 12px 0; border:none;
   }
+  .total-stat{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    margin:16px 0 0 0;
+  }
+  .total-number{
+    font-family:var(--font-display);
+    font-optical-sizing:auto;
+    font-weight:700;
+    font-size:46px;
+    line-height:1;
+    color:var(--text);
+  }
+  .total-label{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+  }
   .site-header .count{
     font-family:var(--font-mono);
     font-size:11px;
@@ -418,6 +439,7 @@
   @media (max-width: 640px){
     .site-header{ max-width:calc(100vw - 40px); padding:14px 16px; }
     .site-header h1{ font-size:21px; }
+    .total-number{ font-size:34px; }
     .legend{ display:none; }
     #detail-panel{
       width:100%; max-width:100%;
@@ -436,9 +458,12 @@
 <div id="map"></div>
 
 <div class="site-header">
-  <span class="eyebrow">Field Collection</span>
   <h1 id="page-title">The Rock Log</h1>
   <p id="page-subtitle">Specimens, and where they were found.</p>
+  <div class="total-stat">
+    <span class="total-number" id="total-number">0</span>
+    <span class="total-label">specimens</span>
+  </div>
   <hr class="rule" />
   <span class="count" id="specimen-count">Loading specimens&hellip;</span>
   <button id="random-rock-btn" class="random-btn" disabled>Take me to a rock &rarr;</button>
@@ -684,7 +709,7 @@ function openUnknownPanel(){
       ? `<img class="unknown-thumb" src="${r.photo}" alt="Unidentified specimen" />`
       : `<div class="unknown-thumb unknown-thumb-empty">No photo</div>`;
     const cta = r.instagram
-      ? `<a class="ig-link" href="${r.instagram}" target="_blank" rel="noopener">Comment here &rarr;</a>`
+      ? `<a class="ig-link" href="${r.instagram}" target="_blank" rel="noopener">More info here &rarr;</a>`
       : `<span style="color:var(--text-muted); font-family:var(--font-mono); font-size:11px;">No post linked yet</span>`;
     const meta = [r.category, r.locality].filter(Boolean).map(escapeHtml).join(" &middot; ");
     return `
@@ -838,6 +863,7 @@ async function renderRocks(rocks){
   hideStatus();
   buildLegend(rocks.filter(r => !isNaN(r.lat) && !isNaN(r.lng)));
 
+  document.getElementById("total-number").textContent = rocks.length;
   currentUnmapped = rocks.filter(r => isNaN(r.lat) || isNaN(r.lng));
   currentMapped = rocks.filter(r => !isNaN(r.lat) && !isNaN(r.lng));
   currentUnknown = rocks.filter(r => r.name && r.name.trim().toLowerCase() === "unknown");
@@ -867,5 +893,6 @@ loadData();
 
 </body>
 </html>
+
 
 
