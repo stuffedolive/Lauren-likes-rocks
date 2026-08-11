@@ -87,6 +87,7 @@
     user-select:none;
   }
   .basemap-toggle:hover{ border-color:var(--rust); color:var(--rust); }
+  .legend-map-toggle{ display:none; }
 
   /* ============ HEADER / SPECIMEN TAG ============ */
   .site-header{
@@ -176,7 +177,6 @@
 
   .header-actions{ display:flex; flex-direction:column; }
   .header-actions .short-label{ display:none; }
-  #legend-btn{ display:none; }
 
   .unknown-btn{
     display:block;
@@ -555,13 +555,13 @@
     .header-actions .full-label{ display:none; }
     .header-actions .short-label{ display:inline; }
 
-    #legend-btn{ display:block; }
     #browse-all-btn{ order:1; }
     #favorites-btn{ order:2; }
     #unknown-rock-btn{ order:3; }
     #random-rock-btn{ order:4; }
-    #legend-btn{ order:5; }
 
+    .leaflet-control-zoom{ display:none !important; }
+    .legend-map-toggle{ display:block; }
     .leaflet-bottom.leaflet-right{ margin-bottom:60px; }
 
     #detail-panel{
@@ -596,7 +596,6 @@
     <button id="browse-all-btn" class="random-btn" disabled><span class="full-label">Browse all specimens &rarr;</span><span class="short-label">All &rarr;</span></button>
     <button id="favorites-btn" class="unknown-btn" style="display:none;"><span class="full-label">&#9733; My favourites</span><span class="short-label">&#9733; Favs</span></button>
     <button id="unknown-rock-btn" class="unknown-btn" style="display:none;"><span class="full-label">Unknown rocks &mdash; help me identify them</span><span class="short-label">Unknown ID</span></button>
-    <button id="legend-btn" class="random-btn">Legend &rarr;</button>
   </div>
 </div>
 
@@ -708,6 +707,17 @@ basemapBtn.onAdd = function(){
   return div;
 };
 basemapBtn.addTo(map);
+
+const legendMapBtn = L.control({ position: "bottomright" });
+legendMapBtn.onAdd = function(){
+  const div = L.DomUtil.create("div", "basemap-toggle legend-map-toggle");
+  div.innerHTML = "Legend";
+  div.title = "View legend";
+  L.DomEvent.disableClickPropagation(div);
+  div.addEventListener("click", () => openLegendPanel());
+  return div;
+};
+legendMapBtn.addTo(map);
 
 const LABEL_ZOOM_THRESHOLD = 7;
 function updateLabelVisibility(){
@@ -839,7 +849,6 @@ document.getElementById("random-rock-btn").addEventListener("click", () => {
 document.getElementById("favorites-btn").addEventListener("click", openFavoritesPanel);
 document.getElementById("browse-all-btn").addEventListener("click", openAllPanel);
 
-document.getElementById("legend-btn").addEventListener("click", openLegendPanel);
 
 function openLegendPanel(){
   clearActiveMarker();
@@ -931,10 +940,7 @@ function openFavoritesPanel(){
   content.innerHTML = `
     <div class="panel-body" style="padding-top:24px;">
       <span class="panel-eyebrow" style="color:var(--ochre)">Favourites</span>
-      <h2 style="font-size:22px;">Her picks</h2>
-      <p style="color:var(--text-muted); font-size:13.5px; line-height:1.5; margin:0 0 4px 0;">
-        The specimens she's marked as favourites.
-      </p>
+      <h2 style="font-size:22px;">My favourites</h2>
       ${rows}
     </div>
   `;
