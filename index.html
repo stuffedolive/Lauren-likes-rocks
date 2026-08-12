@@ -441,6 +441,7 @@
     padding-top:2px;
   }
   .panel-row .v{ color:var(--text); line-height:1.45; }
+  .panel-row .k-short{ display:none; }
   .panel-notes{
     font-family:var(--font-body);
     font-style:italic;
@@ -561,6 +562,8 @@
     #random-rock-btn{ order:4; }
 
     .leaflet-control-zoom{ display:none !important; }
+    .panel-row .k-full{ display:none; }
+    .panel-row .k-short{ display:inline; }
     .legend-map-toggle{ display:block; }
     .leaflet-bottom.leaflet-right{ margin-bottom:60px; }
 
@@ -813,7 +816,7 @@ function openPanel(rock){
       <div class="panel-row"><div class="k">Found in</div><div class="v">${escapeHtml(rock.locality || "Unknown")}</div></div>
       ${(!isNaN(rock.lat) && !isNaN(rock.lng)) ? `<div class="panel-row"><div class="k">Coordinates</div><div class="v" style="font-family:var(--font-mono); font-size:12.5px;">${rock.lat.toFixed(4)}, ${rock.lng.toFixed(4)}</div></div>` : ""}
       ${rock.precision !== "exact" ? `<div class="panel-row"><div class="k">Location</div><div class="v" style="text-transform:capitalize;">${escapeHtml(rock.precision)}</div></div>` : ""}
-      ${rock.classification ? `<div class="panel-row"><div class="k">Classification</div><div class="v">${escapeHtml(rock.classification)}</div></div>` : ""}
+      ${rock.classification ? `<div class="panel-row"><div class="k"><span class="k-full">Classification</span><span class="k-short">Class.</span></div><div class="v">${escapeHtml(rock.classification)}</div></div>` : ""}
       ${rock.formation ? `<div class="panel-row"><div class="k">Formation</div><div class="v">${escapeHtml(rock.formation)}</div></div>` : ""}
       ${rock.dimensions ? `<div class="panel-row"><div class="k">Dimensions</div><div class="v">${escapeHtml(rock.dimensions)}</div></div>` : ""}
       ${rock.weight ? `<div class="panel-row"><div class="k">Weight</div><div class="v">${escapeHtml(rock.weight)}</div></div>` : ""}
