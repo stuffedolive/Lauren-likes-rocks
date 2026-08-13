@@ -199,9 +199,12 @@
   .unknown-card{
     display:flex;
     gap:12px;
-    padding:14px 0;
+    padding:14px 4px;
     border-top:1px solid var(--border);
+    cursor:pointer;
+    transition:background 0.15s ease;
   }
+  .unknown-card:hover{ background:var(--surface-2); }
   .unknown-thumb{
     width:64px; height:64px;
     object-fit:cover;
@@ -971,7 +974,7 @@ function openUnknownPanel(){
   const panel = document.getElementById("detail-panel");
   const content = document.getElementById("panel-content");
 
-  const cards = currentUnknown.map(r => {
+  const cards = currentUnknown.map((r, i) => {
     const thumb = r.photo
       ? `<img class="unknown-thumb" src="${r.photo}" alt="Unidentified specimen" />`
       : `<div class="unknown-thumb unknown-thumb-empty">No photo</div>`;
@@ -980,7 +983,7 @@ function openUnknownPanel(){
       : `<span style="color:var(--text-muted); font-family:var(--font-mono); font-size:11px;">No post linked yet</span>`;
     const meta = [r.category, r.locality].filter(Boolean).map(escapeHtml).join(" &middot; ");
     return `
-      <div class="unknown-card">
+      <div class="unknown-card" data-idx="${i}">
         ${thumb}
         <div class="unknown-info">
           <div class="unknown-meta">${meta || "No details yet"}</div>
@@ -1001,6 +1004,14 @@ function openUnknownPanel(){
       ${cards}
     </div>
   `;
+
+  content.querySelectorAll(".unknown-card").forEach(card => {
+    card.addEventListener("click", (e) => {
+      if(e.target.closest("a")) return;
+      goToRock(currentUnknown[parseInt(card.dataset.idx, 10)]);
+    });
+  });
+
   panel.classList.add("open");
 }
 
@@ -1186,3 +1197,4 @@ loadData();
 
 </body>
 </html>
+
