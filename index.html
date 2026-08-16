@@ -759,6 +759,18 @@ const markersLayer = L.markerClusterGroup({
     });
   }
 }).addTo(map);
+
+// While a cluster is spiderfied, markers are pulled into a tight artificial
+// spiral just to make them individually clickable — their name labels would
+// overlap heavily in that state, so hide labels for the duration.
+markersLayer.on("spiderfied", function(e){
+  e.markers.forEach(m => { if(m.getTooltip()) m.closeTooltip(); });
+});
+markersLayer.on("unspiderfied", function(e){
+  if(map.getZoom() >= LABEL_ZOOM_THRESHOLD){
+    e.markers.forEach(m => { if(m.getTooltip()) m.openTooltip(); });
+  }
+});
 const statusBanner = document.getElementById("status-banner");
 let currentUnmapped = [];
 let currentMapped = [];
@@ -1197,4 +1209,3 @@ loadData();
 
 </body>
 </html>
-
